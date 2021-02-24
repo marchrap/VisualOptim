@@ -1,2 +1,2 @@
 # VisualOptim
-Implements a number of OLED power optimizing approaches by altering the contents of the images. 
+The project has been a part of a master's project at the University of Cambridge. It implements a number of OLED power optimizing approaches by altering the contents of the images. It provides a number of helper functions and already optimized spaces. The project has been implemnted using [Julia](https://julialang.org/) which is a young programming language gaining momentum in the scientific disciplines. 
