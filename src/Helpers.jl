@@ -1,7 +1,7 @@
 """
 Add helper functions such as:
-- showing original image
-- showing changed image
+x showing original image
+x showing changed image
 x plotting them next to each other
 x creating histograms of their colors
 - showing the change of lightness
@@ -140,9 +140,9 @@ function evaluate_space_RGB_change(optimized)
     changes = zeros(256 * 256 * 256, 3)
     for i = 0:255, j = 0:255, k = 0:255
         pixel = optimized[i+1, j+1, k+1]
-        changes[i*256^2 + j*256 + k+1, 1] = pixel.r * 255. - i
-        changes[i*256^2 + j*256 + k+1, 2] = pixel.g * 255. - j
-        changes[i*256^2 + j*256 + k+1, 3] = pixel.b * 255. - k
+        changes[i*256^2 + j*256 + k+1, 1] = convert(Int, round(pixel.r * 255., digits=0)) - i
+        changes[i*256^2 + j*256 + k+1, 2] = convert(Int, round(pixel.g * 255., digits=0)) - j
+        changes[i*256^2 + j*256 + k+1, 3] = convert(Int, round(pixel.b * 255., digits=0)) - k
     end
 
     return changes
@@ -180,9 +180,9 @@ function compare_colors(original_image, optimized_image)
     R2, G2, B2 = histogram(optimized_image)
 
     # Calculate and return the changes of the means
-    delta_R = (mean(R) - mean(R2))/mean(R)
-    delta_G = (mean(G) - mean(G2))/mean(G)
-    delta_B = (mean(B) - mean(B2))/mean(B)
+    delta_R = (mean(R2) - mean(R))/mean(R)
+    delta_G = (mean(G2) - mean(G))/mean(G)
+    delta_B = (mean(B2) - mean(B))/mean(B)
 
     return delta_R, delta_G, delta_B
 end
@@ -208,6 +208,7 @@ end
 Plots the two images side by side.
 """
 function plot_side_by_side(image1, image2)
+    println(typeof(image1))
     display(plot(plot(image1), plot(image2), layout = @layout([ a b ])))
 end
 
@@ -217,10 +218,10 @@ Compares two images by plotting their difference and histograms of their changes
 """
 # TODO check what happens if you plot the difference to be the CIECAM16 difference
 # instead of the simple euclidean
-function image_histogram(original_image, optimized_image)
+function image_compare_histogram(original_image, optimized_image)
     # Obtain the R, G, B component lists
-    R, G, B = histogram(original_image)
-    R_opt, G_opt, B_opt = histogram(optimized_image)
+    R, G, B = VisualOptim.histogram(original_image)
+    R_opt, G_opt, B_opt = VisualOptim.histogram(optimized_image)
 
     # Obtain the difference image
     difference = zeros(size(original_image))
@@ -231,10 +232,14 @@ function image_histogram(original_image, optimized_image)
     end
 
     # Plot the difference image and the histograms on the right hand side
-    display(plot(Plots.heatmap(difference),
-        Plots.histogram(Any[R, R_opt], alpha=0.2, title="R"),
-        Plots.histogram(Any[G, G_opt], alpha=0.2, title="G"),
-        Plots.histogram(Any[B, B_opt], alpah=0.2, title="B"),
+    display(plot(Plots.heatmap(difference[end:-1:1,:], aspect_ratio=:equal,
+     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis),
+        Plots.histogram(Any[R, R_opt], label=["Original" "Optimized"], alpha=0.5,
+         linewidth=0, title="R", legend=:outertopright),
+        Plots.histogram(Any[G, G_opt], label=["Original" "Optimized"], alpha=0.5,
+         linewidth=0, title="G", legend=:outertopright),
+        Plots.histogram(Any[B, B_opt], label=["Original" "Optimized"], alpha=0.5,
+         linewidth=0, title="B", legend=:outertopright),
         layout = @layout([ a [b; c; d]])))
 end
 
@@ -245,7 +250,8 @@ but only in a single color.
 """
 # TODO check what happens if you plot the difference to be the CIECAM16 difference
 # instead of the simple euclidean
-function image_histogram_color(original_image, optimized_image, color)
+# TODO add the option for colorfullness, hue, lightness, etc
+function image_compare_histogram_color(original_image, optimized_image, color)
     # Obtain the R, G, B component lists
     R, G, B = histogram(original_image)
     R_opt, G_opt, B_opt = histogram(optimized_image)
@@ -255,19 +261,30 @@ function image_histogram_color(original_image, optimized_image, color)
     for i in eachindex(difference)
         a = [original_image[i].r, original_image[i].g, original_image[i].b]
         b = [optimized_image[i].r, optimized_image[i].g, optimized_image[i].b]
-        if color == "R":
-            difference[i] = norm(a[1]-b[1])*255
+        if color == "R"
+            difference[i] = (b[1]-a[1])*255
         elseif color == "G"
-            difference[i] = norm(a[2]-b[2])*255
+            difference[i] = (b[2]-a[2])*255
         elseif color == "B"
-            difference[i] = norm(a[2]-b[2])*255
+            difference[i] = (b[3]-a[3])*255
         end
     end
 
+    if color == "R"
+        data = Any[R, R_opt]
+        label = "R"
+    elseif color == "G"
+        data = Any[G, G_opt]
+        label = "G"
+    elseif color == "B"
+        data = Any[B, B_opt]
+        label = "B"
+    end
+
     # Plot the difference image and the histograms on the right hand side
-    display(plot(Plots.heatmap(difference),
-        Plots.histogram(Any[R, R_opt], alpha=0.2, title="R"),
-        Plots.histogram(Any[G, G_opt], alpha=0.2, title="G"),
-        Plots.histogram(Any[B, B_opt], alpah=0.2, title="B"),
-        layout = @layout([ a [b; c; d]])))
+    display(plot(Plots.heatmap(difference[end:-1:1,:], aspect_ratio=:equal,
+     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis),
+        Plots.histogram(data, label=["Original" "Optimized"], alpha=0.5,
+         linewidth=0, title=label, legend=:outertopright),
+        layout = @layout([ a b ])))
 end

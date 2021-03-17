@@ -4,6 +4,8 @@ using ProgressMeter
 using Optim
 using Images
 using Plots
+using Statistics
+using LinearAlgebra
 
 include("ColorSpaces.jl")
 include("Models.jl")
