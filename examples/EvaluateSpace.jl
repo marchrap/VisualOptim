@@ -10,7 +10,6 @@ using Images
 using Statistics
 using Plots
 
-plotly()
 
 # Load space
 optimized = JLD.load("spaces/3.jld", "B")
@@ -63,7 +62,7 @@ Plots.bar(sizes)
 # change vector
 kernel_size = 32
 local_color_changes = zeros(kernel_size^3, 3)
-for i1 = 5:5, j1 = 3:3, k1 = 7:7
+for i1 = 5:5, j1 = 5:5, k1 = 5:5
     for i2 = 0:kernel_size-1, j2 = 0:kernel_size-1, k2 = 0:kernel_size-1
         i = kernel_size*i1 + i2
         j = kernel_size*j1 + j2
@@ -87,6 +86,7 @@ for i1 = 5:5, j1 = 3:3, k1 = 7:7
     println("Standard devation: $(std(local_color_changes[:, 3]))")
 end
 Plots.histogram(local_color_changes[:, 1])
+savefig("histogram_r_middle_space.pdf")
 
 # Plot the 2D histogram of the changes in a given dimension for different color
 # values
@@ -118,6 +118,7 @@ end
 plot(x, y, z)
 
 Plots.histogram2d(local_color_changes[:, 2], local_color_changes[:, 1], show_empty_bins=true)
+savefig("histogram_r_whole_space.pdf")
 
 # Read a point from the optimized array
 optimized[33, 193, 143]*255
