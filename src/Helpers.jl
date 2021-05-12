@@ -137,15 +137,20 @@ Params:
 function evaluate_space_RGB_change(optimized)
     # Define the changes array and set the corresponding values to the required
     # RGB changes
-    changes = zeros(256 * 256 * 256, 3)
+    color_changes = zeros(256 * 256 * 256, 3)
+    power_changes = zeros(256 * 256 * 256)
     for i = 0:255, j = 0:255, k = 0:255
+        index = i*256^2 + j*256 + k+1
         pixel = optimized[i+1, j+1, k+1]
-        changes[i*256^2 + j*256 + k+1, 1] = convert(Int, round(pixel.r * 255., digits=0)) - i
-        changes[i*256^2 + j*256 + k+1, 2] = convert(Int, round(pixel.g * 255., digits=0)) - j
-        changes[i*256^2 + j*256 + k+1, 3] = convert(Int, round(pixel.b * 255., digits=0)) - k
+        color_changes[index, 1] = convert(Int, round(pixel.r * 255., digits=0)) - i
+        color_changes[index, 2] = convert(Int, round(pixel.g * 255., digits=0)) - j
+        color_changes[index, 3] = convert(Int, round(pixel.b * 255., digits=0)) - k
+        original_power = power(i, j, k)
+        new_power = power(color_changes[index, 1], color_changes[index, 2], color_changes[index, 3])
+        power_changes[index] = new_power - original_power
     end
 
-    return changes
+    return color_changes, power_changes
 end
 
 
