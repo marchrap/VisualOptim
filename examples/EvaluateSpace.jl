@@ -11,8 +11,26 @@ using Statistics
 using Plots
 
 
-# Load space
-optimized = JLD.load("spaces/3.jld", "B")
+# Load spaces
+optimized2 = JLD.load("spaces/3.jld", "B")
+optimized = JLD.load("spaces/ipopt/3.0-4-7.jld", "space")
+VisualOptim.power(optimized[100, 100, 2].r, optimized[100, 100, 2].g, optimized[100, 100, 2].b)
+VisualOptim.power(optimized2[100, 100, 5].r*255, optimized2[100, 100, 5].g*255, optimized2[100, 100, 5].b*255)
+
+# Check power comparisons
+original_power = 0
+new_power = 0
+initial_power = 0
+for i = 1:256, j = 1:256, k = 1:4
+    point = optimized[i, j, k]
+    new_power += VisualOptim.power(point.r, point.g, point.b)
+
+    point = optimized2[i, j, k + 3]
+    original_power += VisualOptim.power(point.r*255, point.g*255, point.b*255)
+
+    initial_power += VisualOptim.power(i-1, j-1, k + 2)
+end
+(new_power - original_power)/initial_power
 
 # Evaluate the space for power and color changes
 original, modified = VisualOptim.evaluate_space_power(optimized)
