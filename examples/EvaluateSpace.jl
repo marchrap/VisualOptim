@@ -13,11 +13,11 @@ using LinearAlgebra
 
 # Load spaces
 optimized = JLD.load("spaces/3.0.jld", "B")
-optimized = JLD.load("spaces/ipopt/3.0-4-7.jld", "space")
+optimized2 = JLD.load("spaces/ipopt/3.0-4-7.jld", "space")
 VisualOptim.power(optimized[100, 100, 2].r, optimized[100, 100, 2].g, optimized[100, 100, 2].b)
 VisualOptim.power(optimized2[100, 100, 5].r*255, optimized2[100, 100, 5].g*255, optimized2[100, 100, 5].b*255)
 
-# Check power comparisons
+# Check power comparisons between two spaces
 original_power = 0
 new_power = 0
 initial_power = 0
