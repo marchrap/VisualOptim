@@ -1,3 +1,6 @@
+# Allows for checking the distribution of the power gains and changes introduced
+# over different epsilons
+
 using Pkg
 
 Pkg.activate(".")
@@ -12,17 +15,22 @@ using Plots
 using StatsPlots
 using Printf
 
+# Define the required parameters
 overall_gains = []
 overall_color_changes = Int[]
 color_group = String[]
 eps_group = Int[]
 
+# Iterate over all epsilons
 for eps = 1.:5.
+    # Print epsilon for debugging purposes
     println(eps)
+
     # Load spaces
-    optimized = JLD.load("spaces/CIELAB/$eps.jld", "B")
+    optimized = JLD.load("spaces/eigenvalue/$eps.jld", "B")
 
     # Evaluate the space for power and color changes
+    # Append the color changes to the different arrays for different colors
     original, modified = VisualOptim.evaluate_space_power(optimized)
     println("Power gains per whole space are equal to $(abs(original-modified)/original)")
     append!(overall_gains, abs(original-modified)/original)
@@ -36,12 +44,23 @@ for eps = 1.:5.
     append!(eps_group, repeat([eps], inner=length(color_changes)))
 end
 
+# Evaluate original total power
+total_power = 0
+for i = 0:255, j = 0:255, k = 0:255
+    total_power += VisualOptim.power(i, j, k)
+end
+total_power = total_power/256^3
+
 # Gains plot
-Plots.plot!(overall_gains, fontfamily="Computer Modern", label="barrier")
+Plots.plot(overall_gains, fontfamily="Computer Modern", label="barrier")
 Plots.scatter!(overall_gains, label=nothing)
 xlabel!("ϵ")
-ylabel!("power gain", fontfamily="Computer Modern", legend = false)
-Plots.savefig("../../final_report/figures/CIELAB_barrier_comparison.pdf")
+ylabel!("power gain", fontfamily="Computer Modern")
+Plots.savefig("../../final_report/figures/CIECAM_barrier_comparison.pdf")
+# Defined using the data print at each evaluation
+a = (total_power .- [155.78, 148.88, 139.65, 129.59, 119.34]) / total_power
+Plots.plot!(a, ribbon=0.002794, linecolor=:red, label="IPOPT")
+Plots.scatter!(a, label=nothing)
 
 # Boxplot for different ColorSpaces
 indexes = sample(1:length(eps_group), 1000000, replace=false)
@@ -54,17 +73,11 @@ savefig("../../final_report/figures/CIELAB_barrier_change_colors.pdf")
 # Evaluate some images
 for eps = 1.:5.
     # Load space
-    optimized = JLD.load("spaces/CIECAM/$eps.jld", "B")
-    for i in ["photo.png", "cat.png", "fruits.png", "monarch.png"]
+    optimized = JLD.load("spaces/optimized_$eps.jld", "B")
+    for i in ["photo.png", "cat2.png", "fruits.png", "monarch2.png"]
         img = load("../src/$i")
-        b = map(x -> convert_pixel(x, optimized), img)
+        b = map(x -> VisualOptim.convert_pixel(x, optimized), img)
         diff = VisualOptim.compare_power(img, b)
-        save("../../final_report/figures/images/CIECAM16/$(@sprintf("%.4f",diff))_$(eps)_$i", b)
+        save("../../final_report/figures/images/CIECAM16_IPOPT/$(@sprintf("%.4f",diff))_$(eps)_$i", b)
     end
-end
-
-
-for i in ["photo.png", "cat.png", "fruits.png", "monarch.png"]
-    img = load("../src/$i")
-    println(length(countmap(img)))
 end
