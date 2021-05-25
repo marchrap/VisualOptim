@@ -14,7 +14,7 @@ x evaluating power over the whole space
 x function optimizing the space
 """
 # TODO Finish documentation
-function optimize_space!(space, eps, color_model)
+function optimize_space!(space, eps, color_model, metric=nothing)
     # Create the progress bar
     progress_bar = Progress(length(space), 1, "Computing the matrix... ", 50)
     update!(progress_bar, 0)
@@ -29,8 +29,8 @@ function optimize_space!(space, eps, color_model)
     #      the actual memory!
     Threads.@threads for pixel in space
         # Define the distance and the cost
-        distance = generate_distance(pixel.r * 255., pixel.g * 255., pixel. b * 255., color_model)
-        cost = generate_cost(log_cost, distance, eps)
+        distance = generate_distance(pixel.r * 255., pixel.g * 255., pixel. b * 255., color_model, metric)
+        cost = generate_cost(log_cost, distance, eps, metric)
 
         # Obtain the solution and alter the space
         res = optimize(cost, [pixel.r * 255., pixel.g * 255., pixel.b * 255.], Optim.Options(g_tol = 1e-3))
@@ -238,13 +238,15 @@ function image_compare_histogram(original_image, optimized_image)
 
     # Plot the difference image and the histograms on the right hand side
     display(plot(Plots.heatmap(difference[end:-1:1,:], aspect_ratio=:equal,
-     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis),
+     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis,
+     axis=nothing),
         Plots.histogram(Any[R, R_opt], label=["Original" "Optimized"], alpha=0.5,
          linewidth=0, title="R", legend=:outertopright),
         Plots.histogram(Any[G, G_opt], label=["Original" "Optimized"], alpha=0.5,
-         linewidth=0, title="G", legend=:outertopright),
+         linewidth=0, title="G", legend=:outertopright, xlabel="Color value",
+         ylabel="Number of occurences", fontfamily="Computer Modern"),
         Plots.histogram(Any[B, B_opt], label=["Original" "Optimized"], alpha=0.5,
-         linewidth=0, title="B", legend=:outertopright),
+         linewidth=0, title="B", legend=:outertopright, fontfamily="Computer Modern"),
         layout = @layout([ a [b; c; d]])))
 end
 
@@ -267,11 +269,11 @@ function image_compare_histogram_color(original_image, optimized_image, color)
         a = [original_image[i].r, original_image[i].g, original_image[i].b]
         b = [optimized_image[i].r, optimized_image[i].g, optimized_image[i].b]
         if color == "R"
-            difference[i] = (b[1]-a[1])*255
+            difference[i] = (b[1]*255-a[1]*255)
         elseif color == "G"
-            difference[i] = (b[2]-a[2])*255
+            difference[i] = (b[2]*255-a[2]*255)
         elseif color == "B"
-            difference[i] = (b[3]-a[3])*255
+            difference[i] = (b[3]*255-a[3]*255)
         end
     end
 
@@ -288,8 +290,10 @@ function image_compare_histogram_color(original_image, optimized_image, color)
 
     # Plot the difference image and the histograms on the right hand side
     display(plot(Plots.heatmap(difference[end:-1:1,:], aspect_ratio=:equal,
-     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis),
+     xlim=(0, size(difference)[2]), ylim=(0, size(difference)[1]), color=:viridis,
+     axis=nothing),
         Plots.histogram(data, label=["Original" "Optimized"], alpha=0.5,
-         linewidth=0, title=label, legend=:outertopright),
+         linewidth=0, title=label, legend=:outertopright, xlabel="Color value",
+         ylabel="Number of occurences", fontfamily="Computer Modern"),
         layout = @layout([ a b ])))
 end

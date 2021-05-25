@@ -3,6 +3,7 @@ module VisualOptim
 using ProgressMeter
 using Optim
 using Images
+using Colors
 using Plots
 using Statistics
 using LinearAlgebra

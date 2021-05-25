@@ -1,4 +1,5 @@
 # Necessary imports
+using VisualOptim
 using LinearAlgebra
 using Colors
 using Images
@@ -8,6 +9,10 @@ using BenchmarkTools
 using StaticArrays
 using Roots
 using Printf
+using JLD
+using Plots
+using StatsPlots
+using StatsBase
 
 """
 The overall loop that obtaines the optimal converted space given a max
@@ -121,7 +126,12 @@ function solve(results::Array{RGB, 3}, index::Tuple{Int64, Int64, Int64}, eigen_
 
     # Convert from back to RGB and change the results matrix
     converted = colorspace_backward(u[1], u[2], u[3])
-    @inbounds results[index[1]+1, index[2]+1, index[3]+1] = converted
+    if !isnan(converted.r)
+        @inbounds results[index[1]+1, index[2]+1, index[3]+1] = converted
+    else
+        N += 1
+        println("hehehe")
+    end
 end
 
 function function_generator(β, λ, eps)
@@ -243,7 +253,7 @@ function compare_power(img1, img2)
     new_power = 0
 
     # Read the power data
-    power_data = CSV.read("project/optimisation/power_data/helsinki1.csv")
+    power_data = CSV.read("power_data/helsinki1.csv", DataFrame)
     power_data= select(power_data, [:currentNow, :R, :G, :B])
     power_data[:, :currentNow] = - power_data[:, :currentNow]
 
@@ -263,14 +273,65 @@ end
 # Benchamrk timing
 @benchmark optimize(5.0)
 @benchmark optimize(5.0)
+optimized = optimize(2.0)
+optimized[9, 2, 1]*255
 
-# Run the algorithm for some example images
-eps = 8.0
-optimized = optimize(eps)
+# Run the algorithm for specified epsilons
+for eps = 1.:5.
+    optimized = optimize(eps)
+    println(eps)
+    save("spaces/eigenvalue/$eps.jld", "optimized", optimized)
+end
 
-for i in ["photo.png", "cat.png", "fruits.png", "monarch.png"]
-    img = load("project/optimisation/src/$i")
-    b = map(x -> convert_pixel(x, optimized), img)
-    diff = compare_power(img, b)
-    save("project/optimisation/src/optimized_$(@sprintf("%.4f",diff))_$(eps)_$i", b)
+# Define the required arrays to store the resutls
+overall_gains = []
+overall_color_changes = Int[]
+color_group = String[]
+eps_group = Int[]
+
+for eps = 1.:5.
+    # Load space
+    optimized = optimize(eps)
+
+    # Evaluate the space for power and color changes
+    original, modified = VisualOptim.evaluate_space_power(optimized)
+    println("Power gains per whole space are equal to $(abs(original-modified)/original)")
+    append!(overall_gains, abs(original-modified)/original)
+    color_changes, power_changes = VisualOptim.evaluate_space_RGB_change(optimized)
+    append!(overall_color_changes, color_changes[:, 1])
+    append!(color_group, repeat(["R"], inner=length(color_changes[:, 1])))
+    append!(overall_color_changes, color_changes[:, 2])
+    append!(color_group, repeat(["G"], inner=length(color_changes[:, 2])))
+    append!(overall_color_changes, color_changes[:, 3])
+    append!(color_group, repeat(["B"], inner=length(color_changes[:, 3])))
+    append!(eps_group, repeat([eps], inner=length(color_changes)))
+end
+
+# Gains plot
+Plots.plot(overall_gains, fontfamily="Computer Modern", color=:red, linestyle=:dash, label="eigenvalue")
+Plots.scatter!(overall_gains, label=nothing)
+xlabel!("ϵ", legend=:topleft)
+ylabel!("power gain", fontfamily="Computer Modern")
+Plots.savefig("../../final_report/figures/eigenvalue_power_gain.pdf")
+
+# Boxplot for different ColorSpaces
+indexes = sample(1:length(eps_group), 1000000, replace=false)
+groupedviolin(eps_group[indexes], overall_color_changes[indexes], group=color_group[indexes], color=[:royalBlue :green :red], range=1.5)
+groupedboxplot!(eps_group[indexes], overall_color_changes[indexes], group=color_group[indexes], fillalpha=0.75, fillcolor=[:lightblue :lightgreen :orange], linecolor=[:black], range=1.5, outliers=false, label=nothing, showmeans=true)
+xlabel!("ϵ")
+ylabel!("changes for different color values", fontfamily="Computer Modern")
+savefig("../../final_report/figures/eigenvalue_change_colors.pdf")
+
+boxplot(repeat([1, 2, 3, 4, 5], inner=Int(length(overall_color_changes_R)/5)), vec(overall_color_changes_R), range=10^7, outliers=false, fontfamily="Computer Modern")
+
+# Evaluate the images over the required range of epsilons
+for eps = 10.0:10.0
+    # Load space
+    optimized = optimize(eps)
+    for i in ["photo.png", "cat2.png", "fruits.png", "monarch2.png"]
+        img = load("../src/$i")
+        b = map(x -> convert_pixel(x, optimized), img)
+        diff = compare_power(img, b)
+        save("../../final_report/figures/images/eigenvalue/$(@sprintf("%.4f",diff))_$(eps)_$i", b)
+    end
 end

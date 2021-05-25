@@ -48,31 +48,60 @@ Params:
     R: The red intensity of the color.
     G: The green instensity of the color.
     B: The blue intensity of the color.
-    space: The function that will convert the point to the given color space.
+    space: The space function that will represent the model used.
+    metric: The metric used as a distance if non-custom models are used.
 """
-function generate_distance(R::Float64, G::Float64, B::Float64, space::Function)
-    # Obtain the point v coordinates in the space
-    x, y, z = space(R, G, B)
+function generate_distance(R::Float64, G::Float64, B::Float64, space, metric=nothing)
+    # Check the metric used
+    if metric == nothing
+        # Obtain the point v coordinates in the space
+        x, y, z = space(R, G, B)
 
-    # Make the closure performant
-    let x = x, y = y, z = z, space = space
-        return function dist(R_n, G_n, B_n)
-                    #=
-                        Evaluates the euclidean distance between an RGB point
-                        and the original point used to generate this function in
-                        the required color space.
+        # Make the closure performant
+        let x = x, y = y, z = z, space = space
+            return function dist(R_n, G_n, B_n)
+                        #=
+                            Evaluates the euclidean distance between an RGB point
+                            and the original point used to generate this function in
+                            the required color space.
 
-                        Params:
-                            R_n: The red intensity of the color.
-                            G_n: The green instensity of the color.
-                            B_n: The blue intensity of the color.
-                    =#
+                            Params:
+                                R_n: The red intensity of the color.
+                                G_n: The green instensity of the color.
+                                B_n: The blue intensity of the color.
+                        =#
 
-                    # Obtain the point position of the color in the required space
-                    x_n, y_n, z_n = space(R_n, G_n, B_n)
+                        # Obtain the point position of the color in the required space
+                        x_n, y_n, z_n = space(R_n, G_n, B_n)
 
-                    # Calculate ΔE
-                    return (x - x_n)^2 + (y - y_n)^2 + (z - z_n)^2
+                        # Calculate ΔE
+                        return (x - x_n)^2 + (y - y_n)^2 + (z - z_n)^2
+            end
+        end
+    else
+        # Obtain the point v coordinates in the correct format
+        original = RGB(R/255, G/255, B/255)
+
+        # Make the closure performant
+        let original = original, space = space
+            return function dist(R_n, G_n, B_n)
+                        #=
+                            Evaluates the euclidean distance between an RGB point
+                            and the original point used to generate this function in
+                            the required color space.
+
+                            Params:
+                                R_n: The red intensity of the color.
+                                G_n: The green instensity of the color.
+                                B_n: The blue intensity of the color.
+                        =#
+
+                        # Obtain the point position of the color in the required space
+                        new = RGB(R_n/255, G_n/255, B_n/255)
+
+                        # Calculate ΔE
+                        return Colors.colordiff(new, original; metric=space)
+            end
         end
     end
 end
@@ -159,8 +188,8 @@ A function that combines the costs and distance function and gives a value for
 any pixel.
 """
 # TODO finish the documentation
-function generate_cost(model, distance, eps)
-    let model = model, distance = distance, eps = eps
+function generate_cost(model, distance, eps, metric)
+    let model = model, distance = distance, eps = eps, metric = metric
         return function cost(RGB_pixel)
                     # If any color parts are negative return infinite cost as
                     # otherwise color conversions fail
@@ -170,7 +199,11 @@ function generate_cost(model, distance, eps)
 
                     # Otherwise conduct normal power calculation
                     delta_E = distance(RGB_pixel[1], RGB_pixel[2], RGB_pixel[3])
-                    delta_E = 1.41 * delta_E^(0.63 * 0.5)
+                    if metric == nothing
+                        delta_E = 1.41 * delta_E^(0.63 * 0.5)
+                    else
+                        delta_E = delta_E
+                    end
                     return model(RGB_pixel[1], RGB_pixel[2], RGB_pixel[3], delta_E, eps)
                end
     end

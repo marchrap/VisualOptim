@@ -10,19 +10,29 @@ using Images
 using Statistics
 using Plots
 
-
 # Load space
-optimized = JLD.load("spaces/3.jld", "B")
+optimized = JLD.load("spaces/optimized_3.0.jld", "space")
 
 # Load images
-img = Images.load("../src/monarch.png")
+img = Images.load("../src/monarch2.png")
 Images.save("evaluations/original.png", img)
-img2 = VisualOptim.convert_image(img, optimized)
+
+# If we have integer optimization
+img2 = deepcopy(img)
+for (index, pixel) in enumerate(img2)
+    new = optimized[pixel]
+    img2[index] = RGB(new.r/255, new.g/255, new.b/255)
+end
+
+# If we have other optimizations
+#img2 = VisualOptim.convert_image(img, optimized)
+
+# Save results
 Images.save("evaluations/changed.png", img2)
 
 # Evaluate power difference
-diff = VisualOptim.compare_power(img, img2)
-println("The power gain is $diff")
+difference = VisualOptim.compare_power(img, img2)
+println("The power gain is $difference")
 
 # Evaluate color changes
 VisualOptim.compare_colors(img, img2)

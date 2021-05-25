@@ -9,10 +9,10 @@ using StatsBase
 using Images
 using Statistics
 using Plots
-
+using LinearAlgebra
 
 # Load spaces
-optimized2 = JLD.load("spaces/3.jld", "B")
+optimized = JLD.load("spaces/3.0.jld", "B")
 optimized = JLD.load("spaces/ipopt/3.0-4-7.jld", "space")
 VisualOptim.power(optimized[100, 100, 2].r, optimized[100, 100, 2].g, optimized[100, 100, 2].b)
 VisualOptim.power(optimized2[100, 100, 5].r*255, optimized2[100, 100, 5].g*255, optimized2[100, 100, 5].b*255)
@@ -75,6 +75,16 @@ end
 sizes = map(x->x.second, sort(collect(d), by=x->x[2]))
 sum(sizes[1:10000])/sum(sizes)
 Plots.bar(sizes)
+
+# Obtain the CDF and plot it
+distribution = [sizes[1]/sum(sizes)]
+for point in sizes[2:end]
+    append!(distribution, point/sum(sizes) + distribution[end])
+end
+Plots.plot(distribution)
+Plots.xlabel!("Index")
+Plots.ylabel!("Power contribution", fontfamily="Computer Modern", legend=false)
+Plots.savefig("../../final_report/figures/compression.pdf")
 
 # This snippet looks at how well the local space can be represented by single
 # change vector
@@ -140,3 +150,14 @@ savefig("histogram_r_whole_space.pdf")
 
 # Read a point from the optimized array
 optimized[33, 193, 143]*255
+
+# Check the magnitude of changes on the diagonal and plot them
+changes = []
+for i = 0:255
+    change = norm(i .- [optimized[i+1].r optimized[i+1].g optimized[i+1].b])
+    append!(changes, change)
+end
+Plots.plot(changes)
+Plots.xlabel!("Value of the RGB component")
+Plots.ylabel!("Magnitude of the change", fontfamily="Computer Modern", legend=false)
+Plots.savefig("../../final_report/figures/magnitude_of_change.pdf")
